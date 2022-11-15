@@ -36,3 +36,76 @@
     transform: rotate(360deg);
   }
 }
+
+
+.field_block {
+	flex: 1;
+	flex-direction: row;
+	width: 400px;
+	padding: 10px;
+}
+.field_block .field_title {
+	padding: 0 5px;
+}
+.field_block * + .field_input {
+	margin-top: 10px;
+}
+.field_block .field_input input {
+	flex: 1;
+	padding: 10px;
+}
+.field_block .field_input label {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	cursor: pointer;
+}
+.field_block .field_input label + label {
+	margin-top: 1em;
+}
+.field_block .field_error {
+	display: inline;
+	width: fit-content;
+	margin-top: 10px;
+	padding: 3px 5px;
+	border-radius: 2px;
+	background: #d20; color: #fff;
+}
+.field_block .field_input.language {
+	flex-direction: row;
+	position: relative;
+}
+.field_block .field_input.language .name {
+	flex: 1;
+	margin-left: -1px;
+}
+.field_block .field_input.language .dropdown {
+	position: absolute;
+	top: 100%; left: 0px;
+	min-width: 100%; width: max-content; max-width: unset;
+	margin-top: -1px;
+	border: 1px solid #ddd;
+	background: #fcfcfc; color: #111;
+	z-index: 2;
+}
+.field_block .field_input.language .dropdown .row {
+	display: inline;
+	min-width: 100% !important; width: max-content; max-width: unset;
+	padding: 5px 10px;
+}
+.field_block .field_input.language .dropdown .row ~ .row {
+	border-top: 1px solid #eee;
+}
+.field_block .field_input.language .dropdown .row.selected {
+	background: #f5f5f5;
+	cursor: pointer;
+}
+.field_block .field_input.language .dropdown .row pre {
+	display: inline;
+	width: fit-content;
+	margin-right: 10px;
+	font-family: Courier New;
+}
+.field_block .field_input.language .dropdown .row pre mark {
+	font-family: Courier New;
+}
