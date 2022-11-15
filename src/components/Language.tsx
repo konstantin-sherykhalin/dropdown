@@ -1,92 +1,115 @@
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { findInDict, FoundLanguageType, getLanguage, LanguageType } from '../api/language';
+import { useDebounce } from '../hooks/useDebounce';
 import Dropdown from './Dropdown';
 
-const MAX_ITEMS = 10;
-
-type LanguageType = {
-    id: number;
-    name: string;
-};
-const languages: LanguageType[] = [
-    { id: 1, name: 'Русский' },
-    { id: 2, name: 'Башкирский' },
-];
+type UsingLanguageType = LanguageType & { title?: string };
 
 interface Props {
-    value?: number[];
+    dict?: UsingLanguageType[];
+    value?: FoundLanguageType[];
     placeholder?: string;
+    disabled?: boolean;
     error?: string;
-    onChange?: (value: number[]) => void;
+    onChange?: (value: FoundLanguageType[]) => void;
 }
-const Language: FC<Props> = ({ value, placeholder = 'Язык', error = '', onChange }) => {
-    const [innerValue, setInnerValue] = useState<number[]>(value ?? []);
-    const [list, setList] = useState<LanguageType[]>([]);
+const Language: FC<Props> = ({ dict, value, placeholder = 'Язык', disabled, error = '', onChange }) => {
+    const [innerValue, setInnerValue] = useState<FoundLanguageType[]>(value ?? []);
+    const [innerError, setInnerError] = useState<string>(error ?? '');
+
+    const [list, setList] = useState<FoundLanguageType[]>([]);
+    const [loading, setLoading] = useState(false);
     const [input, setInput] = useState('');
 
-    const searchLanguage = useCallback(() => {
-        const lower = input.toLowerCase();
-
-        const found: LanguageType[] = [];
-        for (const e of languages) {
-            if (lower == e.name.toLowerCase().substring(0, lower.length)) found.push(e);
-
-            if (found.length == MAX_ITEMS) break;
+    const searchLanguage = useCallback(async () => {
+        if (dict) {
+            const lower = input.toLowerCase();
+            const found = findInDict(dict, lower);
+            setList(found);
+        } else {
+            setInnerError('');
+            try {
+                const found = await getLanguage(input);
+                setList(found);
+            } catch (err) {
+                setInnerError(`${err}`);
+            } finally {
+                setLoading(false);
+            }
         }
-        if (found.length < MAX_ITEMS) {
-            for (const e of languages)
-                if (!found.find((g) => g.id == e.id)) {
-                    if (e.name.toLowerCase().indexOf(lower) >= 0) found.push(e);
-
-                    if (found.length == MAX_ITEMS) break;
-                }
-        }
-        setList(found);
-    }, [list, input]);
+    }, [dict, list, input]);
 
     const addLanguage = useCallback(
-        (id: number) => {
-            const newValue = [...innerValue, id];
+        (language: FoundLanguageType) => {
+            const newValue = [...innerValue, language];
             setInnerValue(newValue);
-            onChange?.(newValue);
-            setList((list) => list.filter((e) => e.id != id));
+            if (onChange) onChange(newValue);
             setInput('');
+        },
+        [value, onChange],
+    );
+    const removeLanguage = useCallback(
+        (id: number) => () => {
+            const newValue = innerValue.filter((e) => e.id != id);
+            setInnerValue(newValue);
+            if (onChange) onChange(newValue);
         },
         [value, onChange],
     );
 
     const onRevert = useCallback(() => setInput(''), []);
 
+    const debouncedInput = useDebounce(input, 700);
     useEffect(() => {
-        if (input.length) searchLanguage();
-        else setList([]);
-    }, [input]);
+        if (dict) {
+            if (input.length) searchLanguage();
+            else setList([]);
+        } else {
+            setLoading(!!input.length);
+        }
+    }, [dict, input]);
+    useEffect(() => {
+        if (!dict) {
+            if (debouncedInput.length) searchLanguage();
+            else setList([]);
+        }
+    }, [dict, debouncedInput]);
 
-    const show_dropdown = !!input.length;
-    const selected = useMemo(
-        () => innerValue.map((id) => languages.find((e) => e.id == id)).filter((e) => e) as LanguageType[],
-        [innerValue],
+    const listWithoutSelected = useMemo(
+        () => list.filter((e) => !innerValue.map((g) => g.id).includes(e.id)),
+        [list, innerValue],
     );
 
     return (
-        <div className="field_block language">
-            <div>
-                <p className="field_title">Язык:</p>
-                <div className="field_input language">
-                    {selected.map((e) => e.name).join(', ')}
-                    <input
-                        className="name"
-                        type="text"
-                        value={input}
-                        placeholder={placeholder}
-                        autoComplete="off"
-                        onChange={(e) => setInput(e.target.value)}
+        <>
+            <div className={`field_input ${input.length ? 'dropdown' : ''}`}>
+                {innerValue.map((e) => (
+                    <div key={e.id} className="item">
+                        {e.title ?? e.name_ru} <button onClick={removeLanguage(e.id)}>&times;</button>
+                    </div>
+                ))}
+                <input
+                    className="name"
+                    type="text"
+                    value={input}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    autoComplete="off"
+                    onChange={(e) => setInput(e.target.value)}
+                />
+                {!!input.length && (
+                    <Dropdown
+                        list={listWithoutSelected}
+                        loading={loading}
+                        input={input}
+                        onChange={addLanguage}
+                        revert={onRevert}
                     />
-                    {show_dropdown && <Dropdown list={list} input={input} onChange={addLanguage} revert={onRevert} />}
-                </div>
-                {error && <p className="field_error">{error}</p>}
+                )}
             </div>
-        </div>
+            {error ? <p className="field_error">{error}</p> : innerError && <p className="field_error">{innerError}</p>}
+        </>
     );
 };
 

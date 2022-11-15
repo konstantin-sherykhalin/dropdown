@@ -1,17 +1,17 @@
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 
-type LanguageType = {
-    id: number;
-    name: string;
-};
+import { FoundLanguageType } from '../api/language';
 
 interface Props {
-    list: LanguageType[];
+    list: FoundLanguageType[];
+    loading: boolean;
     input: string;
-    onChange: (value: number) => void;
+    onChange: (value: FoundLanguageType) => void;
     revert: () => void;
 }
-const Dropdown: FC<Props> = ({ list, input, onChange, revert }) => {
+const Dropdown: FC<Props> = ({ list, loading, input, onChange, revert }) => {
+    const ref = useRef<HTMLDivElement | null>(null);
+
     const [selected, setSelected] = useState(-1);
 
     const onKeyDown = useCallback(
@@ -25,7 +25,7 @@ const Dropdown: FC<Props> = ({ list, input, onChange, revert }) => {
                 setSelected((selected) => (selected == -1 ? list.length - 1 : selected - 1));
             }
             if (e.key == 'Enter' && list[selected]) {
-                onChange(list[selected].id);
+                onChange(list[selected]);
                 (document.activeElement as HTMLInputElement).blur();
             }
             if (e.key == 'Escape') {
@@ -41,18 +41,34 @@ const Dropdown: FC<Props> = ({ list, input, onChange, revert }) => {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [selected, onkeydown]);
 
+    useEffect(() => {
+        if (ref.current) {
+            if (ref.current.offsetWidth > (ref.current.parentElement?.offsetWidth ?? 0)) {
+                ref.current.style.borderTopRightRadius = '8px';
+            } else {
+                ref.current.style.borderTopRightRadius = '0px';
+            }
+        }
+    }, [loading, list]);
+
     return (
-        <div className="dropdown">
-            {list.length ? (
-                list.map(({ id, name }, i) => {
-                    const _name = input ? name.replace(new RegExp(input, 'i'), '<mark>$&</mark>') : name;
+        <div ref={ref} className="dropdown">
+            {loading ? (
+                <div key="no" className="row">
+                    Загрузка…
+                </div>
+            ) : list.length ? (
+                list.map((language, i) => {
+                    const _name = input
+                        ? language.title.replace(new RegExp(input, 'i'), '<mark>$&</mark>')
+                        : language.title;
                     return (
                         <div
-                            key={id}
+                            key={language.id}
                             className={`row ${selected == i ? 'selected' : ''}`}
                             onMouseEnter={() => setSelected(i)}
                             onMouseLeave={() => setSelected(-1)}
-                            onMouseDown={() => onChange(id)}
+                            onMouseDown={() => onChange(language)}
                         >
                             <span dangerouslySetInnerHTML={{ __html: _name }} />
                         </div>
